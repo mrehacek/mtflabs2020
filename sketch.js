@@ -7,29 +7,31 @@ let isFullscreen = false;
 
 // manipulate these parameters 
 let o_noiseMax, o_phase, o_noiseZoff, o_maxCircles, o_circleGrowth,
-  o_collisionDistDiff = 100, // somehow effects how is collision detected, dont know how :D
+  o_collisionDistDiff = 300, // somehow effects how is collision detected, dont know how :D
   o_extraRandomDisplacement = 0, // the circles will be more noisy (use 0-100), use for example with dissonant/aggresive/loud sound
-  o_fadeSpeed = 5, // 0-30 how quickly circles fades on collision
-  o_collisionAmplifySize = 10
+  o_fadeSpeed = 10, // 0-30 how quickly circles fades on collision
+  o_collisionAmplifySize = 50
   ;
 
 function setup() {
   let canvas = createCanvas(windowWidth, windowHeight - 30);
   timer_ms = millis();
-
+  
   circleGenerators.push(new CircleGenerator(width / 3, height / 2));
   circleGenerators.push(new CircleGenerator((width / 3)*2, height / 2));
-
+  
   sliderNoiseMax = createSlider(0, 10, 3, 0.1);
   sliderPhase = createSlider(0, 0.01, 0.005, 0.001);
   sliderNoiseZoff = createSlider(0, 0.01, 0.005, 0.001);
   sliderMaxCircles = createSlider(0, 50, 30, 1);
   sliderCircleGrowth = createSlider(-10, 10, 1, 0.1);
   sliders = [sliderNoiseMax, sliderPhase, sliderNoiseZoff, sliderMaxCircles, sliderCircleGrowth]
+  
+  background(0);
 }
 
 function draw() {
-  background(0, 0, 0, 10);
+  background(0, 0, 0, 30);
 
   // print fps and circle counts
   if (!isFullscreen) {
@@ -43,8 +45,8 @@ function draw() {
     pop();
   }
   
-  //circleGenerators[0].x = mouseX;
-  //circleGenerators[0].y = mouseY;
+  circleGenerators[0].x = mouseX;
+  circleGenerators[0].y = mouseY;
 
   // update visualization parameters from sliders
   o_noiseMax = sliderNoiseMax.value();
@@ -153,7 +155,9 @@ class CircleGenerator {
     // create very random collision effect
     // YORO (you only render once)
     //circle.rMin = random(100);
-    circle.rMax = random(circle.rMax, circle.rMax + o_collisionAmplifySize);
+    if (o_collisionAmplifySize != 0) {
+      circle.rMax = random(circle.rMax, circle.rMax + o_collisionAmplifySize);
+    }
 
     // fade out the circles
     circle.setAlpha(circle.color.levels[3] - o_fadeSpeed);
@@ -195,7 +199,7 @@ class Circle {
     blendMode(ADD);
     strokeWeight(2); // map(circleGenerators[0].getCircles().length + circleGenerators[1].getCircles().length, 1, 20, 1, 50)
     // todo: map the randomness to something
-    stroke(color(40, 10, random(150, 255)));
+    stroke(color(40, 10, random(150, 255), 255));
     noFill();
     //fill(10, 0, 255, 20);
     beginShape();
@@ -211,7 +215,7 @@ class Circle {
     noiseSeed(random()); // so every generator creates other circles
 
     // generate a circle of points, which are then displaced using noise, randomness, or some other data like biosensors
-    for (let a = 0; a < TWO_PI; a += 0.4) { // todo: change a+= if you have performance issues (0.1 min that seems to perform well, 1 is doing crappy circles)
+    for (let a = 0; a < TWO_PI; a += 0.35) { // todo: change a+= if you have performance issues (0.1 min that seems to perform well, 1 is doing crappy circles)
       const xoff = map(cos(a+this.phase), -1, 1, 0, this.noiseMax);
       const yoff = map(sin(a+this.phase), -1, 1, 0, this.noiseMax);
 
