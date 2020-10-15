@@ -23,13 +23,17 @@ function draw() {
   push();
   textSize(10);
   fill(255);
-  text(circleGenerators[0].getCircles().length, 20, 30);
-  text(circleGenerators[1].getCircles().length, 80, 30);
-  text("fps: " + frameRate(), 20, 70);
+  text(circleGenerators[0].getCircles().length, 10, 20);
+  text(circleGenerators[1].getCircles().length, 40, 20);
+  text("fps: " + frameRate(), 10, 40);
   pop();
   
   stroke(255);
   noFill();
+
+  circleGenerators[0].x = mouseX;
+  circleGenerators[0].y = mouseY;
+
   for (let i = 0; i < circleGenerators.length; i++) {
     const generator = circleGenerators[i];
     generator.update(sliderCircleGrowth.value());
@@ -40,7 +44,10 @@ function draw() {
 
       for (const c of generator.getCircles()) {
         for (const c2 of generator2.getCircles()) {
-          const hit = collideCircleCircle(c.centerX, c.centerY, c.rMax + 200, c2.centerX, c2.centerY, c2.rMax + 200);
+          let hit = false;
+          // simple collision on x axis
+          //if (c.centerX + c.rMax > c2.centerX - c2.rMax) hit = true;
+          hit = collideCircleCircle(c.centerX, c.centerY, c.rMax + 200, c2.centerX, c2.centerY, c2.rMax + 200);
           if (hit) {
             generator.handleCircleCollision(c);
             generator2.handleCircleCollision(c2);
@@ -52,6 +59,7 @@ function draw() {
     generator.draw();
   }
 
+  // todo: connect the generation of circles to heart beat
   if (millis() > time + random(700,1000))
   {
     for (let c of circleGenerators) {
@@ -84,9 +92,9 @@ class CircleGenerator {
   update(circleGrowthRatio) {
     for (let c of this.circles) {
       c.update(circleGrowthRatio);
-
     }
-    this.circles = this.circles.filter(c => c.color.levels[3] > 0.01);
+
+    this.circles = this.circles.filter(c => !c.shouldDispose());
   }
 
   draw() {
@@ -104,7 +112,7 @@ class CircleGenerator {
   }
 
   handleCircleCollision(circle) {
-    circle.setAlpha(circle.color.levels[3] - 5);
+    circle.setAlpha(circle.color.levels[3] - 10);
   }
 }
 
@@ -114,7 +122,7 @@ class Circle {
     this.centerY = centerY;
     
     this.rMin = 0;
-    this.rMax = 100;
+    this.rMax = 10;
 
     this.phase = 0.01;
     this.noiseZoff = 0.1;
@@ -139,7 +147,7 @@ class Circle {
 
   draw() {
     push();
-    strokeWeight(2);
+    strokeWeight(2); // map(circleGenerators[0].getCircles().length + circleGenerators[1].getCircles().length, 1, 20, 1, 50)
     stroke(this.color);
     beginShape();
     for (const p of this.points) {
@@ -151,12 +159,13 @@ class Circle {
 
   regeneratePoints() {
     this.points = []
-    for (let a = 0; a < TWO_PI; a += 0.1) {
-      let xoff = map(cos(a+this.phase), -1, 1, 0, this.noiseMax);
-      let yoff = map(sin(a+this.phase), -1, 1, 0, this.noiseMax);
-      let r = map(noise(xoff, yoff, this.noiseZoff), 0, 1, this.rMin, this.rMax);
-      let x = r * cos(a);
-      let y = r * sin(a);
+    for (let a = 0; a < TWO_PI; a += map(this.rMax, 10, 300, 0.1, 0.08)) {
+      const extraSize = map(circleGenerators[0].getCircles().length + circleGenerators[1].getCircles().length, 2, 20, 10.0, 1.0)
+      const xoff = map(cos(a+this.phase), -1, 1, 0, this.noiseMax + extraSize);
+      const yoff = map(sin(a+this.phase), -1, 1, 0, this.noiseMax + extraSize);
+      const r = map(noise(xoff, yoff, this.noiseZoff), 0, 1, this.rMin, this.rMax + random(extraSize)); // todo map this to sth / disturbing sound
+      const x = r * cos(a);
+      const y = r * sin(a);
 
       this.points.push([x + this.centerX, y + this.centerY]);
     }
@@ -168,5 +177,9 @@ class Circle {
 
   getPoints() {
     return this.points;
+  }
+
+  shouldDispose() {
+    return (this.color.levels[3] < 0.01) || (this.rMin > width / 2);
   }
 }
