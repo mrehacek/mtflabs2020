@@ -1,15 +1,16 @@
 // this disables debug errors for better speed
-p5.disableFriendlyErrors = true;
+//p5.disableFriendlyErrors = true;
 
 const circleGenerators = []
 let timer_ms = 0;
+let isFullscreen = false;
 
 // manipulate these parameters 
-let o_noiseMax, o_phase, o_noiseZoff, o_maxCircles, o_circleGrowth
+let o_noiseMax, o_phase, o_noiseZoff, o_maxCircles, o_circleGrowth,
   o_collisionDistDiff = 100, // somehow effects how is collision detected, dont know how :D
-  o_extraRandomDisplacement = 0 // the circles will be more noisy (use 0-100), use for example with dissonant/aggresive/loud sound
-  o_fadeSpeed = 20, // 0-30 how quickly circles fades on collision
-  o_collisionAmplifySize = 80
+  o_extraRandomDisplacement = 0, // the circles will be more noisy (use 0-100), use for example with dissonant/aggresive/loud sound
+  o_fadeSpeed = 5, // 0-30 how quickly circles fades on collision
+  o_collisionAmplifySize = 10
   ;
 
 function setup() {
@@ -24,20 +25,23 @@ function setup() {
   sliderNoiseZoff = createSlider(0, 0.01, 0.005, 0.001);
   sliderMaxCircles = createSlider(0, 50, 30, 1);
   sliderCircleGrowth = createSlider(-10, 10, 1, 0.1);
+  sliders = [sliderNoiseMax, sliderPhase, sliderNoiseZoff, sliderMaxCircles, sliderCircleGrowth]
 }
 
 function draw() {
-  background(0);
+  background(0, 0, 0, 10);
 
   // print fps and circle counts
-  push();
-  textSize(10);
-  fill(255);
-  text(circleGenerators[0].getCircles().length, 10, 20);
-  text(circleGenerators[1].getCircles().length, 40, 20);
-  text("fps: " + frameRate(), 10, 40);
-  text("press space to reset", 10, 60);
-  pop();
+  if (!isFullscreen) {
+    push();
+    textSize(10);
+    fill(255);
+    text(circleGenerators[0].getCircles().length, 10, 20);
+    text(circleGenerators[1].getCircles().length, 40, 20);
+    text("fps: " + frameRate(), 10, 40);
+    text("press space to reset, F to toggle fullscreen", 10, 60);
+    pop();
+  }
   
   //circleGenerators[0].x = mouseX;
   //circleGenerators[0].y = mouseY;
@@ -63,7 +67,7 @@ function draw() {
           let hit = false;
           
           // todo: maybe just try movement of generators only on X axis with this condition
-          // if (c.centerX + c.rMax > c2.centerX - c2.rMax) hit = true;
+          //if (c.centerX + c.rMax > c2.centerX - c2.rMax) hit = true;
 
           // todo: working weird (probably because of how i constructed this loop)
           // todo: try to change the o_collisionDistDiff, add instead of subtract
@@ -95,7 +99,9 @@ function draw() {
 }
 
 function windowResized() {
-  resizeCanvas(windowWidth, windowHeight - 30);
+  newHeight = windowHeight;
+  if (!isFullscreen) newHeight -= 30; // toolbar on botom
+  resizeCanvas(windowWidth, newHeight);
 }
 
 function keyPressed() {
@@ -103,6 +109,10 @@ function keyPressed() {
     for (const g of circleGenerators) {
       g.circles = [];
     }
+  } else if (key === "f") {
+    isFullscreen = !fullscreen();
+    fullscreen(isFullscreen);
+    sliders.forEach(s => isFullscreen ? s.hide() : s.show());
   }
 }
 
@@ -198,9 +208,10 @@ class Circle {
 
   regeneratePoints() {
     this.points = []
+    noiseSeed(random()); // so every generator creates other circles
 
     // generate a circle of points, which are then displaced using noise, randomness, or some other data like biosensors
-    for (let a = 0; a < TWO_PI; a += map(TWO_PI, 10, 300, 0.1, PI / 10)) {
+    for (let a = 0; a < TWO_PI; a += 0.4) { // todo: change a+= if you have performance issues (0.1 min that seems to perform well, 1 is doing crappy circles)
       const xoff = map(cos(a+this.phase), -1, 1, 0, this.noiseMax);
       const yoff = map(sin(a+this.phase), -1, 1, 0, this.noiseMax);
 
