@@ -1,25 +1,35 @@
-//p5.disableFriendlyErrors = true;
+// this disables debug errors for better speed
+p5.disableFriendlyErrors = true;
 
 const circleGenerators = []
-let time = 0;
+let timer_ms = 0;
+
+// manipulate these parameters 
+let o_noiseMax, o_phase, o_noiseZoff, o_maxCircles, o_circleGrowth
+  o_collisionDistDiff = 300, // somehow effects how is collision detected, dont know how :D
+  o_extraRandomDisplacement = 0 // the circles will be more noisy (use 0-100), use for example with dissonant/aggresive/loud sound
+  o_fadeSpeed = 20, // 0-30 how quickly circles fades on collision
+  o_collisionAmplifySize = 80
+  ;
 
 function setup() {
   let canvas = createCanvas(windowWidth, windowHeight);
-  time = millis();
+  timer_ms = millis();
 
   circleGenerators.push(new CircleGenerator(width / 3, height / 2));
   circleGenerators.push(new CircleGenerator((width / 3)*2, height / 2));
 
-  sliderNoiseMax = createSlider(0, 10, 5, 0.1);
+  sliderNoiseMax = createSlider(0, 10, 3, 0.1);
   sliderPhase = createSlider(0, 0.01, 0.005, 0.001);
   sliderNoiseZoff = createSlider(0, 0.01, 0.005, 0.001);
-  sliderMaxCircles = createSlider(0, 500, 20, 1);
+  sliderMaxCircles = createSlider(0, 50, 30, 1);
   sliderCircleGrowth = createSlider(-10, 10, 1, 0.1);
 }
 
 function draw() {
   background(40);
 
+  // print fps and circle counts
   push();
   textSize(10);
   fill(255);
@@ -28,12 +38,17 @@ function draw() {
   text("fps: " + frameRate(), 10, 40);
   pop();
   
-  stroke(255);
-  noFill();
-
   circleGenerators[0].x = mouseX;
   circleGenerators[0].y = mouseY;
 
+  // update visualization parameters from sliders
+  o_noiseMax = sliderNoiseMax.value();
+  o_phase = sliderPhase.value();
+  o_noiseZoff = sliderNoiseZoff.value();
+  o_maxCircles = sliderMaxCircles.value();
+  o_circleGrowth = sliderCircleGrowth.value();
+
+  // update circle generators
   for (let i = 0; i < circleGenerators.length; i++) {
     const generator = circleGenerators[i];
     generator.update(sliderCircleGrowth.value());
@@ -45,9 +60,13 @@ function draw() {
       for (const c of generator.getCircles()) {
         for (const c2 of generator2.getCircles()) {
           let hit = false;
-          // simple collision on x axis
-          //if (c.centerX + c.rMax > c2.centerX - c2.rMax) hit = true;
-          hit = collideCircleCircle(c.centerX, c.centerY, c.rMax + 200, c2.centerX, c2.centerY, c2.rMax + 200);
+          
+          // todo: maybe just try movement of generators only on X axis with this condition
+          // if (c.centerX + c.rMax > c2.centerX - c2.rMax) hit = true;
+
+          // todo: working weird (probably because of how i constructed this loop)
+          hit = collideCircleCircle(c.centerX, c.centerY, c.rMax + o_collisionDistDiff, c2.centerX, c2.centerY, c2.rMax - o_collisionDistDiff);
+
           if (hit) {
             generator.handleCircleCollision(c);
             generator2.handleCircleCollision(c2);
@@ -59,17 +78,16 @@ function draw() {
     generator.draw();
   }
 
+  // generate new circles
   // todo: connect the generation of circles to heart beat
-  if (millis() > time + random(700,1000))
+  if (millis() > timer_ms + random(700,1000))
   {
     for (let c of circleGenerators) {
       if (sliderMaxCircles.value() > c.getCircles().length) {
         c.generateNow();
       }
     }
-    time = millis();
-
-    // todo destroy circles when out of viewer space
+    timer_ms = millis();
   }
 
 }
@@ -112,7 +130,13 @@ class CircleGenerator {
   }
 
   handleCircleCollision(circle) {
-    circle.setAlpha(circle.color.levels[3] - 10);
+    // create very random collision effect
+    // YORO (you only render once)
+    //circle.rMin = random(100);
+    circle.rMax = random(circle.rMax, circle.rMax + o_collisionAmplifySize);
+
+    // fade out the circles
+    circle.setAlpha(circle.color.levels[3] - o_fadeSpeed);
   }
 }
 
@@ -121,6 +145,7 @@ class Circle {
     this.centerX = centerX;
     this.centerY = centerY;
     
+    // the circle will be drawn with random displacements, in area between circles with radius rMin and rMax
     this.rMin = 0;
     this.rMax = 10;
 
@@ -133,13 +158,12 @@ class Circle {
     this.color = color(255, 255, 255);
   }
 
-  // todo accept last render millis
   update(growthRatio) {
     this.regeneratePoints();
 
-    this.noiseZoff += sliderNoiseZoff.value();
-    this.phase += sliderPhase.value();
-    this.noiseMax = sliderNoiseMax.value();
+    this.noiseZoff += o_noiseZoff;
+    this.phase += o_phase;
+    this.noiseMax = o_noiseMax;
 
     this.rMin += growthRatio;
     this.rMax += growthRatio;
@@ -147,8 +171,11 @@ class Circle {
 
   draw() {
     push();
-    strokeWeight(2); // map(circleGenerators[0].getCircles().length + circleGenerators[1].getCircles().length, 1, 20, 1, 50)
+    blendMode(ADD);
+    strokeWeight(1); // map(circleGenerators[0].getCircles().length + circleGenerators[1].getCircles().length, 1, 20, 1, 50)
     stroke(this.color);
+    noFill();
+    //fill(10, 0, 255, 20);
     beginShape();
     for (const p of this.points) {
       vertex(p[0], p[1]);
@@ -159,11 +186,14 @@ class Circle {
 
   regeneratePoints() {
     this.points = []
-    for (let a = 0; a < TWO_PI; a += map(this.rMax, 10, 300, 0.1, 0.08)) {
-      const extraSize = map(circleGenerators[0].getCircles().length + circleGenerators[1].getCircles().length, 2, 20, 10.0, 1.0)
-      const xoff = map(cos(a+this.phase), -1, 1, 0, this.noiseMax + extraSize);
-      const yoff = map(sin(a+this.phase), -1, 1, 0, this.noiseMax + extraSize);
-      const r = map(noise(xoff, yoff, this.noiseZoff), 0, 1, this.rMin, this.rMax + random(extraSize)); // todo map this to sth / disturbing sound
+
+    // generate a circle of points, which are then displaced using noise, randomness, or some other data like biosensors
+    for (let a = 0; a < TWO_PI; a += map(this.rMax, 10, 300, 0.1, PI / 20)) {
+      const xoff = map(cos(a+this.phase), -1, 1, 0, this.noiseMax);
+      const yoff = map(sin(a+this.phase), -1, 1, 0, this.noiseMax);
+
+      // todo: instead of perlin noise, try to connect to EMG (something that is also noisy but somewhat continuous)
+      const r = map(noise(xoff, yoff, this.noiseZoff), 0, 1, this.rMin, this.rMax + random(o_extraRandomDisplacement)); // todo map this to sth / disturbing sound
       const x = r * cos(a);
       const y = r * sin(a);
 
@@ -179,7 +209,10 @@ class Circle {
     return this.points;
   }
 
+  /**
+   * Call on every update from parent, to check if the circle became invisible so we can destroy it
+   */
   shouldDispose() {
-    return (this.color.levels[3] < 0.01) || (this.rMin > width / 2);
+    return (this.color.levels[3] < 5) || (this.rMin > width / 2);
   }
 }
