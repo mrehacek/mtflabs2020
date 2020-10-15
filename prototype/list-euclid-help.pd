@@ -1,0 +1,25 @@
+#N canvas 576 23 623 340 10;
+#X obj 12 6 cnv 15 600 60 empty empty list-euclid 20 12 0 14 -233017
+-66577 0;
+#N canvas 420 330 494 344 META 0;
+#X text 12 45 LICENSE GPL v3;
+#X text 12 178 RELEASE_DATE 2013;
+#X text 12 158 WEBSITE https://sites.google.com/site/eargram/;
+#X text 12 138 AUTHOR Gilberto Bernardes;
+#X text 12 25 KEYWORDS;
+#X text 12 118 LIBRARY earGram_abs;
+#X text 12 65 DESCRIPTION plots geometric figures in a plan;
+#X text 12 84 INLET_0 clear dimen point circle filledCircle square
+filledSquare rectangle filled rectangle;
+#X restore 557 316 pd META;
+#X msg 44 126 2 4 5 6;
+#X msg 107 126 2 8 4 6;
+#X obj 44 173 list-euclid;
+#X floatatom 44 206 5 0 0 0 - - -, f 5;
+#X text 30 45 calculates the Euclidean distance between two vectors
+, f 70;
+#X text 448 32 Gilberto Bernardes et al.;
+#X text 544 47 INESC TEC;
+#X connect 2 0 4 0;
+#X connect 3 0 4 1;
+#X connect 4 0 5 0;
