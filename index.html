@@ -3,20 +3,203 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Sketch</title>
-
-    <link rel="stylesheet" type="text/css" href="style.css">
-
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="yes" name="mobile-web-app-capable">
+    <meta content="black" name="apple-mobile-web-app-status-bar-style">
+  
     <script src="libraries/p5.min.js"></script>
     <!-- <script src="libraries/p5.sound.min.js"></script>
     <script src="libraries/p5.particle.js"></script>
     <script src="https://unpkg.com/p5bezier@0.2.4/lib/p5.bezier.min.js"></script> -->
     <script src="libraries/p5.collide2d.min.js"></script>
     <script src="libraries/anime.min.js"></script>
+    <script src="sketch.js"></script>
+
+  <script src="https://unpkg.com/ml5@0.1.1/dist/ml5.min.js" type="text/javascript"></script>
+    <title>Sketch</title>
+
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <style>
+      * {
+        margin: 0.25em;
+        padding: 0.25em;
+        font-family: Arial, "Sans Serif";
+        box-sizing: border-box;
+      }
+  
+      html, body {
+        width: 100%;
+        max-width: 600px;
+        margin-left: auto;
+        margin-right: auto;
+        text-align: center;
+      }
+  
+      input {
+        width: 100%;
+      }
+  
+      textarea {
+        margin-left: auto;
+        margin-right: auto;
+        display: block;
+        width: 100%;
+      }
+  
+    </style>
+
   </head>
 
-  <body>
-    <script src="sketch.js"></script>
+  <body style="background-color: black;">
+    <input id="sender"/>
+    <script type="text/javascript">
+  
+  
+      $ = document.getElementById.bind(document);
+  
+      var ws = new WebSocket("ws://localhost:9001/");
+  
+      ws.onopen = function() {
+        $("connection").innerHTML = "connected";
+      };
+  
+      /* when a message is received from Pd */
+      ws.onmessage = function(message) {
+        // console.log("message", message, message.data);
+        $("receiver").innerHTML += message.data + "\n";
+        $("receiver").setAttribute("rows", $("receiver").innerHTML.split("\n").length - 1);
+      };
+  
+      ws.onclose = function() {
+        $("connection").innerHTML = "not connected";
+      };
+  
+      /* when enter is pressed send the message to Pd */
+      $("sender").onkeydown = function(ev) {
+        if (ev.keyCode == 13) {
+          console.log($("sender").value);
+          ws.send($("sender").value);
+          $("sender").value = "";
+        }
+      }
+      /*
+      posenet.load().then(function(net) {
+        const pose = net.estimateSinglePose(imageElement, {
+          flipHorizontal: true
+        });
+        return pose;
+      }).then(function(pose){
+        console.log(pose);
+      });*/
+      let video;
+  let poseNet;
+  let poses = [];
+  
+  function setup() {
+    setupSketch();
+    let cnv = createCanvas(620, 490);
+    // positions canvas 50px to the right and 100px
+    // below upper left corner of the window
+    cnv.position(650,250);
+    frameRate(30);
+    video = createCapture(VIDEO);
+    video.size(width, height);
+  
+    // Create a new poseNet method with a single detection
+    poseNet = ml5.poseNet(video, modelReady, options={architecture: 'ResNet50'});
+    // This sets up an event that fills the global variable "poses"
+    // with an array every time new poses are detected
+    poseNet.on('pose', function(results) {
+      poses = results;
+    });
+    // Hide the video element, and just show the canvas
+    video.hide();
+  }
+  
+  function modelReady() {
+    //select('#status').html('Model Loaded');
+  }
+  
+  function draw() {
+    background(40);
+    //image(video, 0, 0, width, height);
+    // We can call both functions to draw all keypoints and the skeletons
+    drawKeypoints();
+    drawSkeleton();
+  }
+  
+  // A function to draw ellipses over the detected keypoints
+  function drawKeypoints()  {
+    console.log("poses.length")
+    console.log(poses.length)
+    noses = [];
+    // Loop through all the poses detected
+    for (let i = 0; i < poses.length; i++) {
+      // For each pose detected, loop through all the keypoints
+      let pose = poses[i].pose;
+      for (let j = 0; j < pose.keypoints.length; j++) {
+        // A keypoint is an object describing a body part (like rightArm or leftShoulder)
+        let keypoint = pose.keypoints[j];
+        // Only draw an ellipse is the pose probability is bigger than 0.2
+        if(keypoint.part == "nose"){
+          noses.push(keypoint);
+        }
+        if (keypoint.score > 0.2) {
+          //fill(255, 0, 0);
+          //noStroke();
+          //ellipse(keypoint.position.x, keypoint.position.y, 10, 10);
+        }
+      }
+    }
+    drawVisuals(noses);
+  }
+  
+  // A function to draw the skeletons
+  function drawSkeleton() {
+  
+    var esk1;
+    var esk2;
+  
+    if (poses.length != 0) {
+      if (esk1 === undefined) {
+        esk1 = "";
+      }
+      if (esk2 === undefined) {
+        esk2 = "esqueleto 1 " + -1 + " " + -1;
+      }
+      esk1 = "esqueleto 0 " + poses[0].pose.keypoints[0].position.x, poses[0].pose.keypoints[0].position.y;
+      if (poses[1] != undefined) {
+        esk2 = "esqueleto 1 " + poses[1].pose.keypoints[0].position.x, poses[0].pose.keypoints[0].position.y;
+      }
+    }
+    console.log(esk1);
+    console.log(esk2);
+    //console.log(poses[1].pose)
+  
+    var _e = JSON.stringify(poses);
+    //console.log(_e);
+    //console.log(_e);
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(esk1);
+      ws.send(esk2);
+    }
+  
+  
+    // Loop through all the skeletons detected
+    for (let i = 0; i < poses.length; i++) {
+      let skeleton = poses[i].skeleton;
+      // For every skeleton, loop through all body connections
+      for (let j = 0; j < skeleton.length; j++) {
+        let partA = skeleton[j][0];
+        let partB = skeleton[j][1];
+        stroke(255, 0, 0);
+        //line(partA.position.x, partA.position.y, partB.position.x, partB.position.y);
+      }
+    }
+  }
+  
+</script>
   </body>
-</html>
+  </html>
+  

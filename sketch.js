@@ -1,4 +1,4 @@
-// this disables debug errors for better speed
+  // this disables debug errors for better speed
 p5.disableFriendlyErrors = true;
 
 const circleGenerators = []
@@ -12,7 +12,7 @@ let o_noiseMax, o_phase, o_noiseZoff, o_maxCircles, o_circleGrowth
   o_collisionAmplifySize = 80
   ;
 
-function setup() {
+function setupSketch() {
   let canvas = createCanvas(windowWidth, windowHeight - 30);
   timer_ms = millis();
 
@@ -26,7 +26,7 @@ function setup() {
   sliderCircleGrowth = createSlider(-10, 10, 1, 0.1);
 }
 
-function draw() {
+function drawVisuals(noses) {
   background(0);
 
   // print fps and circle counts
@@ -53,7 +53,7 @@ function draw() {
   for (let i = 0; i < circleGenerators.length; i++) {
     const generator = circleGenerators[i];
     generator.update(sliderCircleGrowth.value());
-
+/*
     // collide
     for (let j = i + 1; j < circleGenerators.length; j++) {
       const generator2 = circleGenerators[j];
@@ -75,7 +75,7 @@ function draw() {
           }
         }
       }
-    }
+    }*/
 
     generator.draw();
   }
@@ -86,7 +86,9 @@ function draw() {
   {
     for (let c of circleGenerators) {
       if (sliderMaxCircles.value() > c.getCircles().length) {
-        c.generateNow();
+        noses.forEach(nose => {
+          c.generateNow(nose);
+        });
       }
     }
     timer_ms = millis();
@@ -131,8 +133,8 @@ class CircleGenerator {
     }
   }
 
-  generateNow() {
-    this.circles.push(new Circle(this.x, this.y));
+  generateNow(nose) {
+      this.circles.push(new Circle(nose.position.x, nose.position.y));
   }
 
   getCircles() {
