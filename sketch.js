@@ -1,6 +1,8 @@
 // this disables debug errors for better speed
 p5.disableFriendlyErrors = true;
 
+const MAX_CIRCLES = 300;
+
 const circleGenerators = []
 let timerMs = 0;
 let isFullscreen = false;
@@ -13,9 +15,9 @@ let sound;
 
 // manipulate these parameters 
 let o_noiseMax, o_phase, o_noiseZoff, o_maxCircles, o_circleGrowth,
-  o_collisionDistDiff = 300, // somehow effects how is collision detected, dont know how :D
+  o_collisionDistDiff = 200, // somehow effects how is collision detected, dont know how :D
   o_extraRandomDisplacement = 0, // the circles will be more noisy (use 0-100), use for example with dissonant/aggresive/loud sound
-  o_fadeSpeed = 10, // 0-30 how quickly circles fades on collision
+  o_fadeSpeed = 1, // 0-30 how quickly circles fades on collision
   o_collisionAmplifySize = 40
   ;
 
@@ -39,14 +41,25 @@ function setup() {
   let canvas = createCanvas(windowWidth, windowHeight - 30);
   timerMs = millis();
   
-  circleGenerators.push(new CircleGenerator(width / 2, height / 2));
-  //circleGenerators.push(new CircleGenerator(width / 3, height / 2));
-  //circleGenerators.push(new CircleGenerator((width / 3)*2, height / 2));
+  // circleGenerators.push(new CircleGenerator(width / 2, height / 2));
+
+  circleGenerators.push(new CircleGenerator(width / 3, height / 2));
+  circleGenerators.push(new CircleGenerator((width / 3)*2, height / 2));
+
+  // for (let x = 400; x < width; x += 400) {
+  //   for (let y = 400; y < height; y += 400) {
+  //     circleGenerators.push(new CircleGenerator(x, y));
+  //   }
+  // }
+  // circleGenerators.push(new CircleGenerator(width / 3, height / 3));
+  // circleGenerators.push(new CircleGenerator(width / 3, height / 3 * 2));
+  // circleGenerators.push(new CircleGenerator((width / 3)*2, height / 3));
+  // circleGenerators.push(new CircleGenerator((width / 3)*2, height / 3 * 2));
   
   sliderNoiseMax = createSlider(0, 10, 3, 0.1);
   sliderPhase = createSlider(0, 0.01, 0.005, 0.001);
   sliderNoiseZoff = createSlider(0, 0.01, 0.005, 0.001);
-  sliderMaxCircles = createSlider(0, 200, 100, 1);
+  sliderMaxCircles = createSlider(0, MAX_CIRCLES, MAX_CIRCLES, 1);
   sliderCircleGrowth = createSlider(-10, 10, 1, 0.1);
   sliders = [sliderNoiseMax, sliderPhase, sliderNoiseZoff, sliderMaxCircles, sliderCircleGrowth]
   
@@ -138,8 +151,25 @@ function draw() {
           hit = collideCircleCircle(c.centerX, c.centerY, c.rMax + o_collisionDistDiff, c2.centerX, c2.centerY, c2.rMax - o_collisionDistDiff);
 
           if (hit) {
-            generator.handleCircleCollision(c);
-            generator2.handleCircleCollision(c2);
+            generator.getCircles().pop();
+            generator2.getCircles().pop();
+            // generator.handleCircleCollision(c);
+            // generator2.handleCircleCollision(c2);
+          }
+        }
+      }
+    }
+
+    // on quiet audio destroy
+    for (let j = i + 1; j < circleGenerators.length; j++) {
+      const generator2 = circleGenerators[j];
+      for (const c of generator.getCircles()) {
+        for (const c2 of generator2.getCircles()) {
+          if (al_all < 10) {
+            generator.getCircles().pop();
+            generator2.getCircles().pop();
+            // generator.handleCircleCollision(c);
+            // generator2.handleCircleCollision(c2);
           }
         }
       }
@@ -245,7 +275,7 @@ class Circle {
     
     // the circle will be drawn with random displacements, in area between circles with radius rMin and rMax
     this.rMin = 0;
-    this.rMax = 100;
+    this.rMax = 200;
 
     this.phase = 0.01;
     this.noiseZoff = 0.1;
@@ -271,9 +301,9 @@ class Circle {
     push();
     // todo: play with these parameters, mainly color, maybe use hsb
     blendMode(ADD);
-    strokeWeight(2); // map(circleGenerators[0].getCircles().length + circleGenerators[1].getCircles().length, 1, 20, 1, 50)
+    strokeWeight(1); // map(circleGenerators[0].getCircles().length + circleGenerators[1].getCircles().length, 1, 20, 1, 50)
     // todo: map the randomness to something
-    stroke(color(40, 10, random(150, 255), 255));
+    stroke(color(40, 10, random(150, 255), this.color.levels[3]));
     noFill();
     //fill(10, 0, 255, 20);
     beginShape();
@@ -289,7 +319,11 @@ class Circle {
     noiseSeed(random()); // so every generator creates other circles
 
     // generate a circle of points, which are then displaced using noise, randomness, or some other data like biosensors
-    for (let a = 0; a < TWO_PI; a += 0.3) { // todo: change a+= if you have performance issues (0.1 min that seems to perform well, 1 is doing crappy circles)
+    
+    // does flicker
+    //let interpolation_rad = map(frameRate(), 0, 60, 0.2, 0.1, true); // create point every interpolation_rad radians
+    for (let a = 0; a < TWO_PI; a += 0.35) { // todo: change a+= if you have performance issues (0.1 min that seems to perform well, 1 is doing crappy circles)
+
       const xoff = map(cos(a+this.phase), -1, 1, 0, this.noiseMax);
       const yoff = map(sin(a+this.phase), -1, 1, 0, this.noiseMax);
 
