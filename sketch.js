@@ -18,7 +18,7 @@ let o_noiseMax, o_phase, o_noiseZoff, o_maxCircles, o_circleGrowth,
   o_collisionDistDiff = 200, // somehow effects how is collision detected, dont know how :D
   o_extraRandomDisplacement = 0, // the circles will be more noisy (use 0-100), use for example with dissonant/aggresive/loud sound
   o_fadeSpeed = 1, // 0-30 how quickly circles fades on collision
-  o_collisionAmplifySize = 40
+  o_collisionAmplifySize = 20
   ;
 
 function preload(){
@@ -27,8 +27,11 @@ function preload(){
 
 function mousePressed() {
   userStartAudio();
-  sound.amp(0.2); 
-  sound.loop();
+  if (!sound.isPlaying()) {
+    sound.play();
+  } else {
+    sound.pause();
+  }
 }
 
 function setup() {
@@ -41,10 +44,10 @@ function setup() {
   let canvas = createCanvas(windowWidth, windowHeight - 30);
   timerMs = millis();
   
-  // circleGenerators.push(new CircleGenerator(width / 2, height / 2));
+  circleGenerators.push(new CircleGenerator(width / 2, height / 2));
 
-  circleGenerators.push(new CircleGenerator(width / 3, height / 2));
-  circleGenerators.push(new CircleGenerator((width / 3)*2, height / 2));
+  // circleGenerators.push(new CircleGenerator(width / 3, height / 2));
+  // circleGenerators.push(new CircleGenerator((width / 3)*2, height / 2));
 
   // for (let x = 400; x < width; x += 400) {
   //   for (let y = 400; y < height; y += 400) {
@@ -141,6 +144,14 @@ function draw() {
 
       for (const c of generator.getCircles()) {
         for (const c2 of generator2.getCircles()) {
+          // on quiet audio destroy
+          if (al_all < 5) {
+            generator.getCircles().pop();
+            generator2.getCircles().pop();
+            // generator.handleCircleCollision(c);
+            // generator2.handleCircleCollision(c2);
+          }
+
           let hit = false;
           
           // todo: maybe just try movement of generators only on X axis with this condition
@@ -151,25 +162,10 @@ function draw() {
           hit = collideCircleCircle(c.centerX, c.centerY, c.rMax + o_collisionDistDiff, c2.centerX, c2.centerY, c2.rMax - o_collisionDistDiff);
 
           if (hit) {
-            generator.getCircles().pop();
-            generator2.getCircles().pop();
-            // generator.handleCircleCollision(c);
-            // generator2.handleCircleCollision(c2);
-          }
-        }
-      }
-    }
-
-    // on quiet audio destroy
-    for (let j = i + 1; j < circleGenerators.length; j++) {
-      const generator2 = circleGenerators[j];
-      for (const c of generator.getCircles()) {
-        for (const c2 of generator2.getCircles()) {
-          if (al_all < 10) {
-            generator.getCircles().pop();
-            generator2.getCircles().pop();
-            // generator.handleCircleCollision(c);
-            // generator2.handleCircleCollision(c2);
+            // generator.getCircles().pop();
+            // generator2.getCircles().pop();
+            generator.handleCircleCollision(c);
+            generator2.handleCircleCollision(c2);
           }
         }
       }
@@ -283,7 +279,7 @@ class Circle {
 
     this.points = [];
 
-    this.color = color(255, 255, 255);
+    this.color = color(40, 100, 100, 1000);
   }
 
   update(growthRatio, noiseZ) {
@@ -299,13 +295,14 @@ class Circle {
 
   draw() {
     push();
+    colorMode(HSB, 360, 100, 100, 1000);
     // todo: play with these parameters, mainly color, maybe use hsb
     blendMode(ADD);
     strokeWeight(1); // map(circleGenerators[0].getCircles().length + circleGenerators[1].getCircles().length, 1, 20, 1, 50)
     // todo: map the randomness to something
-    stroke(color(40, 10, random(150, 255), this.color.levels[3]));
+    stroke(color(random(0,360), random(80, 100), random(70, 100), this.color.levels[3]));
     noFill();
-    //fill(10, 0, 255, 20);
+    //fill(10, 0, 100, 2);
     beginShape();
     for (const p of this.points) {
       vertex(p[0], p[1]);
